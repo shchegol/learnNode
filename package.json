@@ -4,12 +4,17 @@
   "description": "Step by step learn node.js and koa.js",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "01": "nodemon 01_get-post-server"
   },
   "keywords": [
     "node",
     "koa"
   ],
   "author": "Alexander Shchegol",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "config": "^1.30.0",
+    "mime": "^2.3.1"
+  }
 }
