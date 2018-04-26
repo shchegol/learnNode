@@ -1,6 +1,7 @@
 const fs = require('fs')
 const request = require('request')
 const assert = require('assert')
+const config = require('config')
 const server = require('../server')
 
 describe('server tests', () => {
@@ -24,7 +25,27 @@ describe('server tests', () => {
 
       done()
     })
+  })
 
+  it('GET exist file', (done) => {
+    const content = fs.readFileSync('files/1.txt');
 
+    request('http://localhost:3000/1.txt', function(error, response, body) {
+      if (error) return done(error)
+
+      assert.equal(content, body)
+
+      done()
+    })
+  })
+
+  it('GET file not found', (done) => {
+    request('http://localhost:3000/notfound.txt', function(error, response) {
+      if (error) return done(error)
+
+      assert.equal(response.statusCode, 404)
+
+      done()
+    })
   })
 })
