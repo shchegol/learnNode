@@ -1,9 +1,13 @@
 const fs = require('fs')
-const path = require('path')
+// const path = require('path')
 const request = require('request')
 const assert = require('assert')
-const config = require('config')
+// const config = require('config')
 const server = require('../server')
+// const should = require('should')
+
+// const host = 'http://127.0.0.1:3000';
+// const fixturesRoot = __dirname + '/fixtures';
 
 describe('server tests', () => {
   before((done) => {
@@ -53,10 +57,10 @@ describe('server tests', () => {
   // don't work :(
 
   it('/POST file size limit exceeded', (done) => {
-    // const file = fs.readFileSync('test/files/overweight.pdf')
-    //
+    // const file = fs.createReadStream('test/fixtures/2mb.pdf')
+
     // request
-    //   .post('http://localhost:3000/overweight.pdf', file, function(err, res) {
+    //   .post('http://localhost:3000/2mb.pdf', file, function(err, res) {
     //     if (err) return done(err)
     //
     //     console.log(res.statusCode)
@@ -64,24 +68,41 @@ describe('server tests', () => {
     //     done()
     //   })
 
-    fs
-      .createReadStream('test/files/overweight.pdf')
-      .pipe(request.post('http://localhost:3000/overweight.pdf', function (err, res) {
-        if (err) return done(err)
+    request({
+      method: 'POST',
+      uri: `http://localhost:3000/2mb.pdf`,
+      body: fs.createReadStream('test/fixtures/2mb.pdf'),
+    }, (error, res) => {
+      if (error) return done(error);
 
-        console.log(res.statusCode)
+      res.statusCode.should.be.equal(413);
+      setTimeout(() => {
+        // можно и убрать sync
+        fs.existsSync('test/fixtures//2mb.pdf').should.be.false();
+        done();
+      }, 20);
 
-        // assert.equal(response.statusCode, 413)
+      done();
+    });
 
-        done()
-      }))
+    // fs
+    //   .createReadStream('test/fixtures/2mb.pdf')
+    //   .pipe(request.post('http://localhost:3000/2mb.pdf', function (err, res) {
+    //     if (err) return done(err)
+    //
+    //     console.log(res.statusCode)
+    //
+    //     // assert.equal(response.statusCode, 413)
+    //
+    //     done()
+    //   }))
   })
 
   it('/POST not exist file', (done) => {
-    const file = fs.readFileSync('test/files/test.txt')
+    const file = fs.readFileSync('test/fixtures/1kb.txt')
 
     request
-      .post('http://localhost:3000/test.txt', file, function(err, res) {
+      .post('http://localhost:3000/1kb.txt', file, function(err, res) {
         if (err) return done(err)
         assert.equal(res.statusCode, 200)
         done()
@@ -89,10 +110,10 @@ describe('server tests', () => {
   })
 
   it('/POST exist file', (done) => {
-    const file = fs.readFileSync('test/files/test.txt')
+    const file = fs.readFileSync('test/fixtures/1kb.txt')
 
     request
-      .post('http://localhost:3000/test.txt', file, function(err, res) {
+      .post('http://localhost:3000/1kb.txt', file, function(err, res) {
         if (err) return done(err)
         assert.equal(res.statusCode, 409)
         done()
@@ -111,7 +132,7 @@ describe('server tests', () => {
 
   it('/DELETE exist file', (done) => {
     request
-      .delete('http://localhost:3000/test.txt', function(err, res) {
+      .delete('http://localhost:3000/1kb.txt', function(err, res) {
         if (err) return done(err)
         assert.equal(res.statusCode, 200)
         done()
