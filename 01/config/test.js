@@ -1,3 +1,3 @@
 module.exports = {
-  limitFileSize: 1000
+  limitFileSize: 1e6
 };

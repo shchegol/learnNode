@@ -1,141 +1,166 @@
-const fs = require('fs')
-// const path = require('path')
+process.env.NODE_CONFIG_ENV = 'test'
+
+const fs = require('fs-extra')
 const request = require('request')
-const assert = require('assert')
-// const config = require('config')
+const config = require('config')
+const should = require('should')
+
 const server = require('../server')
-// const should = require('should')
+const hostname = config.get('hostname')
+const port = config.get('port')
+const publicRoot = config.get('publicRoot')
+const filesRoot = config.get('filesRoot')
+const host = `http://${hostname}:${port}`
+const fixturesRoot = `${__dirname}/fixtures`
 
-// const host = 'http://127.0.0.1:3000';
-// const fixturesRoot = __dirname + '/fixtures';
-
-describe('server tests', () => {
-  before((done) => {
-    server.listen(3000, done)
+describe('Server', () => {
+  before(done => {
+    server.listen(port, hostname, done)
   })
 
-  after((done) => {
+  beforeEach(() => {
+    fs.emptyDirSync(filesRoot)
+  })
+
+  after(done => {
     server.close(done)
   })
 
-  it('/GET index.html', (done) => {
-    const content = fs.readFileSync('public/index.html')
+  describe('/GET', () => {
+    it('index.html', done => {
+      const content = fs.readFileSync(`${publicRoot}/index.html`, 'utf-8')
 
-    request('http://localhost:3000', function (err, res, body) {
-      if (err) return done(err)
+      request(host, function (err, res, body) {
+        if (err) return done(err)
 
-      assert.equal(res.headers['content-type'], 'text/html')
-      assert.equal(res.statusCode, 200)
-      assert.equal(content, body)
+        res.headers['content-type'].should.be.equal('text/html')
+        res.statusCode.should.be.equal(200)
+        body.should.be.equal(content)
 
-      done()
+        done()
+      })
+    })
+
+    context('file exist', () => {
+      beforeEach(() => {
+        fs.copySync(`${fixturesRoot}/1kb.txt`, `${filesRoot}/1kb.txt`)
+      })
+
+      it('returns 200 and the file', done => {
+        const fixturesContent = fs.readFileSync(`${fixturesRoot}/1kb.txt`, 'utf-8')
+
+        request(`${host}/1kb.txt`, function (err, res, body) {
+          if (err) return done(err)
+
+          res.statusCode.should.be.equal(200)
+          body.should.be.equal(fixturesContent)
+
+          done()
+        })
+      })
+    })
+
+    context('file not exist', () => {
+      it('returns 404', done => {
+        request(`${host}/1kb.txt`, function (err, res) {
+          if (err) return done(err)
+
+          res.statusCode.should.be.equal(404)
+
+          done()
+        })
+      })
     })
   })
 
-  it('/GET exist file', (done) => {
-    const content = fs.readFileSync('files/1.txt')
+  describe('/POST', () => {
+    context('file not exist', () => {
+      it('returns 200 and is uploaded', (done) => {
+        let file = fs.readFileSync(`${fixturesRoot}/1kb.txt`, 'utf-8')
 
-    request('http://localhost:3000/1.txt', function (err, res, body) {
-      if (err) return done(err)
+        request
+          .post({url: `${host}/1kb.txt`, body: file}, function (err, res) {
+            if (err) return done(err)
 
-      assert.equal(content, body)
+            res.statusCode.should.be.equal(200)
+            file.should.be.equal(fs.readFileSync(`${filesRoot}/1kb.txt`, 'utf-8'))
 
-      done()
+            done()
+          })
+      })
+    })
+
+    context('file exist', () => {
+      beforeEach(() => {
+        fs.copySync(`${fixturesRoot}/1kb.txt`, `${filesRoot}/1kb.txt`)
+      })
+
+      it('returns 409 & file not modified', (done) => {
+        let file = fs.readFileSync(`${fixturesRoot}/1kb.txt`, 'utf-8')
+        let mtime = fs.statSync(`${filesRoot}/1kb.txt`).mtime;
+
+        request
+          .post({url: `${host}/1kb.txt`, body: file}, function (err, res) {
+            if (err) return done(err)
+
+            let newMtime = fs.statSync(`${filesRoot}/1kb.txt`).mtime;
+
+            res.statusCode.should.be.equal(409)
+            mtime.should.eql(newMtime);
+
+            done()
+          })
+      })
+    })
+
+    context('file overweight', () => {
+      it('returns 413 and the file did not appear', (done) => {
+        let file = fs.readFileSync(`${fixturesRoot}/2mb.pdf`)
+
+        request
+          .post({url: `${host}/2mb.pdf`, body: file}, function (err, res) {
+            if (err) return done(err)
+            res.statusCode.should.be.equal(413)
+
+            setTimeout(() => {
+              fs.existsSync(`${filesRoot}/2mb.pdf`).should.be.false()
+              done()
+            }, 20)
+          })
+      })
     })
   })
 
-  it('/GET not exist file', (done) => {
-    request('http://localhost:3000/notexist.txt', function (err, res) {
-      if (err) return done(err)
+  describe('/DELETE', () => {
+    context('exist file', () => {
+      beforeEach(() => {
+        fs.copySync(`${fixturesRoot}/1kb.txt`, `${filesRoot}/1kb.txt`)
+      })
 
-      assert.equal(res.statusCode, 404)
+      it('exist file', (done) => {
+        request
+          .delete(`${host}/1kb.txt`, function (err, res) {
+            if (err) return done(err)
 
-      done()
+            res.statusCode.should.be.equal(200)
+            fs.existsSync(`${filesRoot}/1kb.txt`).should.be.false()
+
+            done()
+          })
+      })
     })
-  })
 
-  // don't work :(
+    context('not exist file', () => {
+      it('not exist file', (done) => {
+        request
+          .delete(`${host}/1kb.txt`, function (err, res) {
+            if (err) return done(err)
 
-  it('/POST file size limit exceeded', (done) => {
-    // const file = fs.createReadStream('test/fixtures/2mb.pdf')
+            res.statusCode.should.be.equal(404)
 
-    // request
-    //   .post('http://localhost:3000/2mb.pdf', file, function(err, res) {
-    //     if (err) return done(err)
-    //
-    //     console.log(res.statusCode)
-    //     // assert.equal(res.statusCode, 413)
-    //     done()
-    //   })
-
-    request({
-      method: 'POST',
-      uri: `http://localhost:3000/2mb.pdf`,
-      body: fs.createReadStream('test/fixtures/2mb.pdf'),
-    }, (error, res) => {
-      if (error) return done(error);
-
-      res.statusCode.should.be.equal(413);
-      setTimeout(() => {
-        // можно и убрать sync
-        fs.existsSync('test/fixtures//2mb.pdf').should.be.false();
-        done();
-      }, 20);
-
-      done();
-    });
-
-    // fs
-    //   .createReadStream('test/fixtures/2mb.pdf')
-    //   .pipe(request.post('http://localhost:3000/2mb.pdf', function (err, res) {
-    //     if (err) return done(err)
-    //
-    //     console.log(res.statusCode)
-    //
-    //     // assert.equal(response.statusCode, 413)
-    //
-    //     done()
-    //   }))
-  })
-
-  it('/POST not exist file', (done) => {
-    const file = fs.readFileSync('test/fixtures/1kb.txt')
-
-    request
-      .post('http://localhost:3000/1kb.txt', file, function(err, res) {
-        if (err) return done(err)
-        assert.equal(res.statusCode, 200)
-        done()
+            done()
+          })
       })
-  })
-
-  it('/POST exist file', (done) => {
-    const file = fs.readFileSync('test/fixtures/1kb.txt')
-
-    request
-      .post('http://localhost:3000/1kb.txt', file, function(err, res) {
-        if (err) return done(err)
-        assert.equal(res.statusCode, 409)
-        done()
-      })
-  })
-
-  it('/DELETE not exist file', (done) => {
-
-    request
-      .delete('http://localhost:3000/notexist.txt', function(err, res) {
-        if (err) return done(err)
-        assert.equal(res.statusCode, 404)
-        done()
-      })
-  })
-
-  it('/DELETE exist file', (done) => {
-    request
-      .delete('http://localhost:3000/1kb.txt', function(err, res) {
-        if (err) return done(err)
-        assert.equal(res.statusCode, 200)
-        done()
-      })
+    })
   })
 })
