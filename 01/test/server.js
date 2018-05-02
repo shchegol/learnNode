@@ -2,6 +2,7 @@ process.env.NODE_CONFIG_ENV = 'test'
 
 const fs = require('fs-extra')
 const request = require('request')
+const rp = require('request-promise')
 const config = require('config')
 const should = require('should')
 const Readable = require('stream').Readable;
@@ -46,18 +47,26 @@ describe('Server', () => {
         fs.copySync(`${fixturesRoot}/1kb.txt`, `${filesRoot}/1kb.txt`)
       })
 
-      it('returns 200 and the file', done => {
-        const fixturesContent = fs.readFileSync(`${fixturesRoot}/1kb.txt`, 'utf-8')
+      it('returns 200 and the file', async () => {
+        let file = fs.readFileSync(`${fixturesRoot}/1kb.txt`, 'utf-8')
+        let res = await rp.get({uri: `${host}/1kb.txt`, resolveWithFullResponse: true});
 
-        request(`${host}/1kb.txt`, function (err, res, body) {
-          if (err) return done(err)
-
-          res.statusCode.should.be.equal(200)
-          body.should.be.equal(fixturesContent)
-
-          done()
-        })
+        res.statusCode.should.be.equal(200)
+        res.body.should.be.equal(file)
       })
+
+      // it('returns 200 and the file', done => {
+      //   const fixturesContent = fs.readFileSync(`${fixturesRoot}/1kb.txt`, 'utf-8')
+      //
+      //   request(`${host}/1kb.txt`, function (err, res, body) {
+      //     if (err) return done(err)
+      //
+      //     res.statusCode.should.be.equal(200)
+      //     body.should.be.equal(fixturesContent)
+      //
+      //     done()
+      //   })
+      // })
     })
 
     context('file not exist', () => {
