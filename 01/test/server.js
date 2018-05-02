@@ -4,7 +4,7 @@ const fs = require('fs-extra')
 const request = require('request')
 const config = require('config')
 const should = require('should')
-
+const Readable = require('stream').Readable;
 const server = require('../server')
 const hostname = config.get('hostname')
 const port = config.get('port')
@@ -95,21 +95,41 @@ describe('Server', () => {
         fs.copySync(`${fixturesRoot}/1kb.txt`, `${filesRoot}/1kb.txt`)
       })
 
-      it('returns 409 & file not modified', (done) => {
-        let file = fs.readFileSync(`${fixturesRoot}/1kb.txt`, 'utf-8')
-        let mtime = fs.statSync(`${filesRoot}/1kb.txt`).mtime;
+      context('When zero file size', () => {
+        it('returns 409 & file not modified', (done) => {
+          let file = fs.readFileSync(`${fixturesRoot}/1kb.txt`, 'utf-8')
+          let mtime = fs.statSync(`${filesRoot}/1kb.txt`).mtime
 
-        request
-          .post({url: `${host}/1kb.txt`, body: file}, function (err, res) {
+          request
+            .post({url: `${host}/1kb.txt`, body: file}, function (err, res) {
+              if (err) return done(err)
+
+              let newMtime = fs.statSync(`${filesRoot}/1kb.txt`).mtime
+
+              res.statusCode.should.be.equal(409)
+              mtime.should.eql(newMtime)
+
+              done()
+            })
+        })
+      })
+
+      context('When zero file size', () => {
+        it('returns 409', done => {
+          let req = request.post(`${host}/1kb.txt`, (err, res) => {
             if (err) return done(err)
 
-            let newMtime = fs.statSync(`${filesRoot}/1kb.txt`).mtime;
-
             res.statusCode.should.be.equal(409)
-            mtime.should.eql(newMtime);
-
             done()
           })
+
+          // emulate zero-file
+          let stream = new Readable()
+
+          stream.pipe(req)
+          stream.push(null)
+
+        })
       })
     })
 
@@ -128,6 +148,24 @@ describe('Server', () => {
             }, 20)
           })
       })
+    })
+
+    context('otherwise with zero file size', () => {
+      it('returns 200 & file is uploaded', done => {
+        let req = request.post(`${host}/1kb.txt`, err => {
+          if (err) return done(err)
+
+          fs.statSync(`${filesRoot}/1kb.txt`).size.should.equal(0)
+
+          done()
+        })
+
+        let stream = new Readable()
+
+        stream.pipe(req)
+        stream.push(null)
+      })
+
     })
   })
 

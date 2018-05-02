@@ -115,29 +115,16 @@ function receiveFile (filepath, req, res) {
       size += chunk.length
 
       if (size > limitFileSize) {
-        // res.statusCode = 413
-        // res.setHeader('Connection', 'close')
-        // res.end('File is too big!')
-        //
-        // writeStream.destroy()
-        //
-        // fs.unlink(filepath, err => {
-        //   /* ignore error */
-        // })
+        res
+          .writeHead(413, {'Connection': 'close'})
+          .end()
 
-        res.writeHead(413, {'Connection': 'close'})
-        res.end()
-        fs.unlink(filepath, err => {
-          console.log(err)
-        })
-
+        fs.unlink(filepath, err => console.error(err))
       }
     })
     .on('close', () => {
       writeStream.destroy()
-      fs.unlink(filepath, err => {
-        console.log(err)
-      })
+      fs.unlink(filepath, err => console.error(err))
     })
     .pipe(writeStream)
 
@@ -154,9 +141,7 @@ function receiveFile (filepath, req, res) {
         } else {
           res.end()
         }
-        fs.unlink(filepath, err => { // eslint-disable-line
-          /* ignore error */
-        })
+        fs.unlink(filepath, err => console.error(err))
       }
     })
     .on('close', () => res.end('OK'))
@@ -187,7 +172,5 @@ function sendFile (filepath, res) {
     })
 
   res
-    .on('close', () => {
-      fileStream.destroy()
-    })
+    .on('close', () => fileStream.destroy())
 }
