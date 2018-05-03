@@ -5,7 +5,7 @@ const request = require('request')
 const rp = require('request-promise')
 const config = require('config')
 const should = require('should')
-const Readable = require('stream').Readable;
+const Readable = require('stream').Readable
 const server = require('../server')
 const hostname = config.get('hostname')
 const port = config.get('port')
@@ -28,19 +28,31 @@ describe('Server', () => {
   })
 
   describe('/GET', () => {
-    it('index.html', done => {
-      const content = fs.readFileSync(`${publicRoot}/index.html`, 'utf-8')
-
-      request(host, function (err, res, body) {
-        if (err) return done(err)
+    context('index.html', () => {
+      it('returns 200 and equal content', async () => {
+        let content = fs.readFileSync(`${publicRoot}/index.html`, 'utf-8')
+        let res = await rp.get({uri: host, resolveWithFullResponse: true})
 
         res.headers['content-type'].should.be.equal('text/html')
         res.statusCode.should.be.equal(200)
-        body.should.be.equal(content)
-
-        done()
+        res.body.should.be.equal(content)
       })
+
+      // it('index.html', done => {
+      //   const content = fs.readFileSync(`${publicRoot}/index.html`, 'utf-8')
+      //
+      //   request(host, function (err, res, body) {
+      //     if (err) return done(err)
+      //
+      //     res.headers['content-type'].should.be.equal('text/html')
+      //     res.statusCode.should.be.equal(200)
+      //     body.should.be.equal(content)
+      //
+      //     done()
+      //   })
+      // })
     })
+
 
     context('file exist', () => {
       beforeEach(() => {
@@ -49,7 +61,7 @@ describe('Server', () => {
 
       it('returns 200 and the file', async () => {
         let file = fs.readFileSync(`${fixturesRoot}/1kb.txt`, 'utf-8')
-        let res = await rp.get({uri: `${host}/1kb.txt`, resolveWithFullResponse: true});
+        let res = await rp.get({uri: `${host}/1kb.txt`, resolveWithFullResponse: true})
 
         res.statusCode.should.be.equal(200)
         res.body.should.be.equal(file)
@@ -70,33 +82,53 @@ describe('Server', () => {
     })
 
     context('file not exist', () => {
-      it('returns 404', done => {
-        request(`${host}/1kb.txt`, function (err, res) {
-          if (err) return done(err)
+      it('returns 404', async () => {
+        let res
 
-          res.statusCode.should.be.equal(404)
+        try {
+          res = await rp.get({uri: `${host}/1kb.txt`, resolveWithFullResponse: true})
+        } catch (err) {
+          res = err
+        }
 
-          done()
-        })
+        res.statusCode.should.be.equal(404)
       })
+
+      // it('returns 404', done => {
+      //   request(`${host}/1kb.txt`, function (err, res) {
+      //     if (err) return done(err)
+      //
+      //     res.statusCode.should.be.equal(404)
+      //
+      //     done()
+      //   })
+      // })
     })
   })
 
   describe('/POST', () => {
     context('file not exist', () => {
-      it('returns 200 and is uploaded', (done) => {
+      it('returns 200 and is uploaded', async () => {
         let file = fs.readFileSync(`${fixturesRoot}/1kb.txt`, 'utf-8')
+        let res = await rp.post({uri: `${host}/1kb.txt`, body: file, resolveWithFullResponse: true})
 
-        request
-          .post({url: `${host}/1kb.txt`, body: file}, function (err, res) {
-            if (err) return done(err)
-
-            res.statusCode.should.be.equal(200)
-            file.should.be.equal(fs.readFileSync(`${filesRoot}/1kb.txt`, 'utf-8'))
-
-            done()
-          })
+        res.statusCode.should.be.equal(200)
+        file.should.be.equal(fs.readFileSync(`${filesRoot}/1kb.txt`, 'utf-8'))
       })
+
+      // it('returns 200 and is uploaded', (done) => {
+      //   let file = fs.readFileSync(`${fixturesRoot}/1kb.txt`, 'utf-8')
+      //
+      //   request
+      //     .post({url: `${host}/1kb.txt`, body: file}, function (err, res) {
+      //       if (err) return done(err)
+      //
+      //       res.statusCode.should.be.equal(200)
+      //       file.should.be.equal(fs.readFileSync(`${filesRoot}/1kb.txt`, 'utf-8'))
+      //
+      //       done()
+      //     })
+      // })
     })
 
     context('file exist', () => {
@@ -105,22 +137,39 @@ describe('Server', () => {
       })
 
       context('When zero file size', () => {
-        it('returns 409 & file not modified', (done) => {
+        it('returns 409 & file not modified', async () => {
           let file = fs.readFileSync(`${fixturesRoot}/1kb.txt`, 'utf-8')
           let mtime = fs.statSync(`${filesRoot}/1kb.txt`).mtime
+          let res
 
-          request
-            .post({url: `${host}/1kb.txt`, body: file}, function (err, res) {
-              if (err) return done(err)
+          try {
+            res = await rp.post({uri: `${host}/1kb.txt`, body: file, resolveWithFullResponse: true})
+          } catch (err) {
+            res = err
+          }
 
-              let newMtime = fs.statSync(`${filesRoot}/1kb.txt`).mtime
+          let newMtime = fs.statSync(`${filesRoot}/1kb.txt`).mtime
 
-              res.statusCode.should.be.equal(409)
-              mtime.should.eql(newMtime)
-
-              done()
-            })
+          res.statusCode.should.be.equal(409)
+          mtime.should.eql(newMtime)
         })
+
+        // it('returns 409 & file not modified', (done) => {
+        //   let file = fs.readFileSync(`${fixturesRoot}/1kb.txt`, 'utf-8')
+        //   let mtime = fs.statSync(`${filesRoot}/1kb.txt`).mtime
+        //
+        //   request
+        //     .post({url: `${host}/1kb.txt`, body: file}, function (err, res) {
+        //       if (err) return done(err)
+        //
+        //       let newMtime = fs.statSync(`${filesRoot}/1kb.txt`).mtime
+        //
+        //       res.statusCode.should.be.equal(409)
+        //       mtime.should.eql(newMtime)
+        //
+        //       done()
+        //     })
+        // })
       })
 
       context('When zero file size', () => {
