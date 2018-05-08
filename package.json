@@ -16,7 +16,15 @@
   "dependencies": {
     "config": "^1.30.0",
     "fs-extra": "^5.0.0",
+    "koa": "^2.5.1",
+    "koa-bodyparser": "^4.2.0",
+    "koa-favicon": "^2.0.1",
+    "koa-logger": "^3.2.0",
+    "koa-router": "^7.4.0",
+    "koa-session": "^5.8.1",
+    "koa-static": "^4.0.2",
     "mime": "^2.3.1",
+    "pug": "^2.0.3",
     "request": "^2.85.0",
     "request-promise": "^4.2.2"
   },
