@@ -1,12 +1,17 @@
 doctype html
 html
-  body
+    head
+        meta(charset='utf-8')
+        title Chat
+        link(href='https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.4/css/bootstrap.min.css' rel="stylesheet")
 
-    ul
-      li
-        a(href="/static") static
-      li
-        a(href="/views") views count
+    body(class='container')
+        p(class='lead') Добро пожаловать в чат!
 
-    div User: #{user}
-    div Views count: #{count}
+        form(id='publish' class='form-inline')
+            input(type="text" name="message")
+            input(type="submit" class="btn btn-primary" value="Отправить")
+
+        ul(id='messages')
+
+        script(src='/assets/js/chat.js')
